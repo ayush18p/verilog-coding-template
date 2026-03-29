@@ -75,6 +75,9 @@ RUN apt-get update -y \
 
 RUN update-ca-certificates
 
+# sudo resolves the container hostname; without DNS this logs "unable to resolve host ..." on every sudo
+RUN echo 'Defaults !fqdn' > /etc/sudoers.d/99-no-fqdn && chmod 440 /etc/sudoers.d/99-no-fqdn
+
 RUN pip install uv --break-system-packages
 
 WORKDIR /
@@ -99,7 +102,16 @@ RUN git config --global user.name "mr agent"
 # 0) Clone the problems repository
 # For private repos, pass GITHUB_TOKEN as build arg
 ARG GITHUB_TOKEN
-ARG REPO_URL=https://github.com/hud-evals/example-verilog-codebase.git
+ARG REPO_URL=https://github.com/ayush18p/crc_stream.git
+# Branches (imagectl passes these; defaults match crc_stream)
+ARG BASELINE_BRANCH=crc_stream_baseline
+ARG TEST_BRANCH=crc_stream_test
+ARG GOLDEN_BRANCH=crc_stream_golden
+# Public GitHub owner/repo for raw.githubusercontent.com (must match public REPO_URL)
+ARG REPO_SLUG=ayush18p/crc_stream
+# Invalidate cached clone when remote pyproject.toml changes (avoids missing pyproject in image)
+ADD https://raw.githubusercontent.com/${REPO_SLUG}/${BASELINE_BRANCH}/pyproject.toml /tmp/.docker-cache-bust-pyproject.toml
+
 ENV random=random6
 RUN cd /home/ubuntu && \
     if [ -n "$GITHUB_TOKEN" ]; then \
@@ -112,9 +124,6 @@ RUN cd /home/ubuntu && \
 WORKDIR /home/ubuntu/example-verilog-codebase
 
 # Checkout branches for testing (baseline, test, golden)
-ARG TEST_BRANCH
-ARG GOLDEN_BRANCH
-ARG BASELINE_BRANCH
 RUN git checkout $BASELINE_BRANCH && \
     git checkout $TEST_BRANCH && \
     git checkout $GOLDEN_BRANCH && \
@@ -130,7 +139,10 @@ USER ubuntu
 # Overwrite git history to avoid leaking info
 RUN rm -rf .git && git init && git add . && git commit -m "Initial commit"
 
-# build the project
+# Use system Python 3.12 (Ubuntu 24.04); avoids uv picking 3.14+ (cocotb 2.0.x caps at 3.13)
+ENV UV_PYTHON=python3
+# build the project (WORKDIR is still /home/ubuntu/example-verilog-codebase)
+RUN test -f pyproject.toml || (echo "ERROR: pyproject.toml missing. Rebuild with: docker build --no-cache ..." && ls -la && exit 1)
 RUN uv sync
 
 # Set environment variables

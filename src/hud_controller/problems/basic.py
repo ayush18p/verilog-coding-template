@@ -13,23 +13,15 @@ logger = logging.getLogger(__name__)
 
 PROBLEM_REGISTRY.append(
     ProblemSpec(
-        id="simple_counter",
-        description="""Please implement a simple synchronous counter with reset, enable, and load functionality.
+        id="crc_stream",
+        description="""Please implement a CRC stream generator according to the specifications .
+        For more details, please refer to the specifications.md  at docs/specifications.md
 
-Inputs:
-- clk: Clock signal (rising edge triggered)
-- rst: Synchronous reset signal
-- ena: Enable signal (allows counting)
-- set: Load signal (sets counter to a specific value)
-- din: 8-bit data input (value to load when set is high)
-
-Output:
-- counter: 8-bit counter value
 """,
         difficulty="easy",
-        base="simple_counter_baseline",
-        test="simple_counter_test",
-        golden="simple_counter_golden",
-        test_files=["tests/test_simple_counter_hidden.py"],
+        base="crc_stream_baseline",
+        test="crc_stream_test",
+        golden="crc_stream_golden",
+        test_files=["tests/test_crc_stream_hidden.py"],
     )
 )
